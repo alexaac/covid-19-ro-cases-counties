@@ -70,6 +70,8 @@ export const NodesAndLinks = (graph, cases) => {
             .attr('y', '0.31em')
             .text(d => d.name)
             .clone(true).lower();
-            
+
+    d3.selectAll('.node-labels').attr('transform', d => `translate(${d.x},${d.y})`);
+
     nodes.exit().remove();
 } 

@@ -64,8 +64,8 @@ const drawGraph = () => {
         .force('link', d3.forceLink(graph.links).id( d => d.name))
         // .force('center', d3.forceCenter(Config.width / 2, Config.height / 2))
         .force('charge', d3.forceManyBody())
-        // .force('x', d3.forceX())
-        // .force('y', d3.forceY())
+        .force('x', d3.forceX())
+        .force('y', d3.forceY())
         .alphaDecay([0.02])
         .stop();
 
