@@ -86,7 +86,7 @@ svg.append('g')
 // Load data
 const promises = [
     // d3.json('https://covid19.geo-spatial.org/api/statistics/getCaseRelations')
-    d3.json('../data/cases_relations_simulated.json')
+    d3.json('data/cases_relations_simulated.json')
 ];
 
 Promise.all(promises).then( data => {
