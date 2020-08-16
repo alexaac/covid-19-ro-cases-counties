@@ -23,6 +23,23 @@ let opts = {lines: 9, length: 4, width: 5, radius: 12, scale: 1, corners: 1, col
 
 spinner = new Spinner(opts).spin(target);
 
+const meter = d3.select("#progress");
+
+// Append the svg object to the chart div
+svg = d3.select('#chart')
+    .append('svg')
+        .attr('class', 'chart-group')
+        .attr('preserveAspectRatio', 'xMinYMid')
+        .attr('width', Config.svg_width)
+        .attr('height', Config.svg_height)
+        .attr('viewBox', [-Config.width / 2, -Config.height / 2, Config.width, Config.height]);
+
+// Append zoomable group
+svg.append('g')
+    .attr('class', 'zoomable-group')
+    .attr('transform', `translate(${Config.margin.left}, ${Config.margin.top})`)
+    // .style('transform-origin', '50% 50% 0');
+
 // Load data
 const promises = [
     d3.json('https://covid19.geo-spatial.org/api/statistics/getCaseRelations')
@@ -42,57 +59,64 @@ const setupGraph = () => {
 
     sources = casesData.data.nodes.filter( d => d.properties.country_of_infection !== null && d.properties.country_of_infection !== 'România' && d.properties.country_of_infection !== 'Romania');
     let counties = casesData.data.nodes.filter( d => d.properties.county);
-    
+
     graph.nodes = casesData.data.nodes;
     graph.links = casesData.data.links;
-    
+
     cases = Array.from(new Set(graph.nodes.map(d => d.properties ? +d.properties.case_no : '')));
-    
+
     // https://observablehq.com/d/cedc594061a988c6
     graph.nodes = graph.nodes.concat(Array.from(new Set(sources.map(d => d.properties.country_of_infection)), name => ({name})));
     graph.nodes = graph.nodes.concat(Array.from(new Set(counties.map(d => d.properties.county)), name => ({name})));
-    
+
     graph.links = graph.links.concat(sources.map(d => ({target: d.name, source: d.properties.country_of_infection})));
     graph.links = graph.links.concat(counties.map(d => ({target: d.name, source: d.properties.county})));
-    
+
     graph.nodes = Data.formatNodes(graph.nodes);
 }
 
 const drawGraph = () => {
 
-    let simulation = d3.forceSimulation(graph.nodes)
-        .force('link', d3.forceLink(graph.links).id( d => d.name))
-        // .force('center', d3.forceCenter(Config.width / 2, Config.height / 2))
-        .force('charge', d3.forceManyBody())
-        .force('x', d3.forceX())
-        .force('y', d3.forceY())
-        .alphaDecay([0.02])
-        .stop();
+    // Create worker and send message to start force graph
+    const ticked = (data) => {
+        meter.style('width', 100 * data.progress + "%");
+    };
 
-    simulation.tick(120);
-    // simulation.restart();
+    const ended = (data) => {
+        graph.nodes = data.nodes;
+        graph.links = data.links;
 
-    // simulation.on('tick', ticked);
-    // simulation.force('link').links(graph.links);
-    
-    // setTimeout(() => {
-    //     simulation.stop();
-    // }, 5000);
+        // Apply zoom handler and zoom out
+        svg.call(Layout.zoom);
+        Layout.resetZoom();
 
-    // Append the svg object to the chart div
-    svg = d3.select('#chart')
-        .append('svg')
-            .attr('class', 'chart-group')
-            .attr('preserveAspectRatio', 'xMinYMid')
-            .attr('width', Config.svg_width)
-            .attr('height', Config.svg_height)
-            .attr('viewBox', [-Config.width / 2, -Config.height / 2, Config.width, Config.height]);
+        // Draw nodes and links
+        Draw.NodesAndLinks(graph, cases);
 
-    // Append zoomable group
-    svg.append('g')
-        .attr('class', 'zoomable-group')
-        .attr('transform', `translate(${Config.margin.left}, ${Config.margin.top})`)
-        // .style('transform-origin', '50% 50% 0');
+        // Show counties colors first
+        Layout.colorCounties();
+
+        // Hide case labels first
+        Layout.hideLabels(1);
+
+        // Zoom to latest case, when loading spinner stops
+        spinner.stop();
+        d3.select('tooltip_div').classed('tooltip-abs', true);
+        d3.select('#CO-' + d3.max(cases))
+            .attr('r', d => 2 * d.r)
+            .dispatch('mouseover');
+
+        meter.style('width', 0);
+    };
+
+    const worker = new Worker('js/worker.js');
+    worker.postMessage({ graph: graph, width: Config.width, height: Config.height });
+    worker.onmessage = function(msg){
+        switch (msg.data.type) {
+            case "tick": return ticked(msg.data);
+            case "end": return ended(msg.data);
+        }
+    }
 
 };
 
@@ -110,10 +134,6 @@ const setActions = () => {
     d3.select('#zoom-out')
         .on('click', () => svg.transition().call(Layout.zoom.scaleBy, 0.5));
     d3.select('#reset-zoom').on('click', () => Layout.resetZoom());
-
-    // Apply zoom handler and zoom out
-    svg.call(Layout.zoom);
-    Layout.resetZoom();
 
     // Change colors from status to counties and vice versa
     d3.select('#color-counties')
@@ -159,6 +179,7 @@ const setActions = () => {
 
     // General page info
     d3.select('#show-info').on('click', () => infoStatus = Tooltip.toggleInfo(infoStatus, language));
+    d3.select('#show-info').dispatch('click');
 
     // Start/stop the animation - highlight the cases ordered by day and case number
     d3.select('#play-cases')
@@ -205,25 +226,6 @@ const setActions = () => {
     });
     d3.select('#nRadius').property('max', cases.length-1);
     Layout.updateRadius(cases, cases.length-1);
-
-    // Draw nodes and links
-    Draw.NodesAndLinks(graph, cases);
-
-    // Color the legend for counties
-    Layout.colorStatus();
-
-    // Hide case labels first
-    Layout.hideLabels(1);
-
-    // Show counties colors first
-    Layout.colorCounties();
-
-    // Zoom to latest case, when loading spinner stops
-    spinner.stop();
-    d3.select('tooltip_div').classed('tooltip-abs', true);
-    d3.select('#CO-' + d3.max(cases))
-        .attr('r', d => 2 * d.r)
-        .dispatch('mouseover');
 
 };
 
