@@ -109,7 +109,7 @@ const drawGraph = () => {
         meter.style('width', 0);
     };
 
-    const worker = new Worker('js/worker.js');
+    const worker = new Worker('../js/worker.js');
     worker.postMessage({ graph: graph, width: Config.width, height: Config.height });
     worker.onmessage = function(msg){
         switch (msg.data.type) {
