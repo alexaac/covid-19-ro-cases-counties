@@ -5,6 +5,49 @@ import * as Draw from './Draw.js';
 import * as Language from './Language.js';
 import * as Layout from './Layout.js';
 
+const workerURL = URL.createObjectURL( new Blob( [ '(',
+
+function() {
+    // https://bl.ocks.org/mbostock/01ab2e85e8727d6529d20391c0fd9a16
+    // https://gist.github.com/fitzoh/5a0edc40cdabd7e3e421
+    // https://codepen.io/s8770125/pen/RRravE
+
+    importScripts("http://d3js.org/d3.v5.min.js");
+
+    // Message event
+    onmessage = function( msg ) {
+        postMessage( simulate( msg.data ) );
+    };
+
+    // Force simulation
+    const simulate = function( data ) {
+
+        let simulation = d3.forceSimulation(data.graph.nodes)
+            .force('link', d3.forceLink(data.graph.links).id( d => d.name))
+            // .force('center', d3.forceCenter(data.width / 2, data.height / 2))
+            .force('charge', d3.forceManyBody())
+            .force('x', d3.forceX())
+            .force('y', d3.forceY())
+            .alphaDecay([0.02])
+            .stop();
+
+        // simulation.tick(120);
+
+        for (var i = 0, n = Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())); i < n; ++i) {
+            postMessage({ type: "tick", progress: i / n });
+            simulation.tick();
+        }
+
+        postMessage({ type: "end", nodes: data.graph.nodes, links: data.graph.links });
+
+    };
+
+}.toString(), ')()' ], { type: 'application/javascript' } ) );
+
+/* Init Worker */
+let worker = new Worker( workerURL );
+
+
 let graph = {nodes: [], links: []};
 let svg, sources, casesData, cases;
 
@@ -109,14 +152,18 @@ const drawGraph = () => {
         meter.style('width', 0);
     };
 
-    const worker = new Worker('../js/worker.js');
+    // Post data to web-worker
     worker.postMessage({ graph: graph, width: Config.width, height: Config.height });
-    worker.onmessage = function(msg){
-        switch (msg.data.type) {
-            case "tick": return ticked(msg.data);
-            case "end": return ended(msg.data);
+
+    // Listen for worker
+    worker.addEventListener( 'message', function( e ) {
+        if ( e.data !== undefined ) {
+            switch (e.data.type) {
+                case "tick": return ticked(e.data);
+                case "end": return ended(e.data);
+            }
         }
-    }
+    }, false );
 
 };
 
