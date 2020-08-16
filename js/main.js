@@ -12,7 +12,7 @@ function() {
     // https://gist.github.com/fitzoh/5a0edc40cdabd7e3e421
     // https://codepen.io/s8770125/pen/RRravE
 
-    importScripts("http://d3js.org/d3.v5.min.js");
+    importScripts("https://d3js.org/d3.v5.min.js");
 
     // Message event
     onmessage = function( msg ) {
