@@ -85,7 +85,8 @@ svg.append('g')
 
 // Load data
 const promises = [
-    d3.json('https://covid19.geo-spatial.org/api/statistics/getCaseRelations')
+    // d3.json('https://covid19.geo-spatial.org/api/statistics/getCaseRelations')
+    d3.json('../data/cases_relations_simulated.json')
 ];
 
 Promise.all(promises).then( data => {
@@ -100,70 +101,91 @@ Promise.all(promises).then( data => {
 
 const setupGraph = () => {
 
-    sources = casesData.data.nodes.filter( d => d.properties.country_of_infection !== null && d.properties.country_of_infection !== 'România' && d.properties.country_of_infection !== 'Romania');
-    let counties = casesData.data.nodes.filter( d => d.properties.county);
+    // sources = casesData.data.nodes.filter( d => d.properties.country_of_infection !== null && d.properties.country_of_infection !== 'România' && d.properties.country_of_infection !== 'Romania');
+    // let counties = casesData.data.nodes.filter( d => d.properties.county);
 
-    graph.nodes = casesData.data.nodes;
-    graph.links = casesData.data.links;
+    graph.nodes = casesData.nodes;
+    graph.links = casesData.links;
 
     cases = Array.from(new Set(graph.nodes.map(d => d.properties ? +d.properties.case_no : '')));
 
-    // https://observablehq.com/d/cedc594061a988c6
-    graph.nodes = graph.nodes.concat(Array.from(new Set(sources.map(d => d.properties.country_of_infection)), name => ({name})));
-    graph.nodes = graph.nodes.concat(Array.from(new Set(counties.map(d => d.properties.county)), name => ({name})));
+    // // https://observablehq.com/d/cedc594061a988c6
+    // graph.nodes = graph.nodes.concat(Array.from(new Set(sources.map(d => d.properties.country_of_infection)), name => ({name})));
+    // graph.nodes = graph.nodes.concat(Array.from(new Set(counties.map(d => d.properties.county)), name => ({name})));
 
-    graph.links = graph.links.concat(sources.map(d => ({target: d.name, source: d.properties.country_of_infection})));
-    graph.links = graph.links.concat(counties.map(d => ({target: d.name, source: d.properties.county})));
+    // graph.links = graph.links.concat(sources.map(d => ({target: d.name, source: d.properties.country_of_infection})));
+    // graph.links = graph.links.concat(counties.map(d => ({target: d.name, source: d.properties.county})));
 
-    graph.nodes = Data.formatNodes(graph.nodes);
+    // graph.nodes = Data.formatNodes(graph.nodes);
 }
 
 const drawGraph = () => {
 
-    // Create worker and send message to start force graph
-    const ticked = (data) => {
-        meter.style('width', 100 * data.progress + "%");
-    };
+    // Apply zoom handler and zoom out
+    svg.call(Layout.zoom);
+    Layout.resetZoom();
 
-    const ended = (data) => {
-        graph.nodes = data.nodes;
-        graph.links = data.links;
+    // Draw nodes and links
+    Draw.NodesAndLinks(graph, cases);
 
-        // Apply zoom handler and zoom out
-        svg.call(Layout.zoom);
-        Layout.resetZoom();
+    // Show counties colors first
+    Layout.colorCounties();
 
-        // Draw nodes and links
-        Draw.NodesAndLinks(graph, cases);
+    // Hide case labels first
+    Layout.hideLabels(1);
 
-        // Show counties colors first
-        Layout.colorCounties();
+    // Zoom to latest case, when loading spinner stops
+    spinner.stop();
+    d3.select('tooltip_div').classed('tooltip-abs', true);
+    d3.select('#CO-' + d3.max(cases))
+        .attr('r', d => 2 * d.r)
+        .dispatch('mouseover');
 
-        // Hide case labels first
-        Layout.hideLabels(1);
+    // // Create worker and send message to start force graph
+    // const ticked = (data) => {
+    //     meter.style('width', 100 * data.progress + "%");
+    // };
 
-        // Zoom to latest case, when loading spinner stops
-        spinner.stop();
-        d3.select('tooltip_div').classed('tooltip-abs', true);
-        d3.select('#CO-' + d3.max(cases))
-            .attr('r', d => 2 * d.r)
-            .dispatch('mouseover');
+    // const ended = (data) => {
+    //     graph.nodes = data.nodes;
+    //     graph.links = data.links;
 
-        meter.style('width', 0);
-    };
+    //     // Apply zoom handler and zoom out
+    //     svg.call(Layout.zoom);
+    //     Layout.resetZoom();
 
-    // Post data to web-worker
-    worker.postMessage({ graph: graph, width: Config.width, height: Config.height });
+    //     // Draw nodes and links
+    //     Draw.NodesAndLinks(graph, cases);
 
-    // Listen for worker
-    worker.addEventListener( 'message', function( e ) {
-        if ( e.data !== undefined ) {
-            switch (e.data.type) {
-                case "tick": return ticked(e.data);
-                case "end": return ended(e.data);
-            }
-        }
-    }, false );
+    //     // Show counties colors first
+    //     Layout.colorCounties();
+
+    //     // Hide case labels first
+    //     Layout.hideLabels(1);
+
+    //     // Zoom to latest case, when loading spinner stops
+    //     spinner.stop();
+    //     d3.select('tooltip_div').classed('tooltip-abs', true);
+    //     d3.select('#CO-' + d3.max(cases))
+    //         .attr('r', d => 2 * d.r)
+    //         .dispatch('mouseover');
+
+    //     meter.style('width', 0);
+    // };
+
+    // // Post data to web-worker
+    // worker.postMessage({ graph: graph, width: Config.width, height: Config.height });
+
+    // // Listen for worker
+    // worker.addEventListener( 'message', function( e ) {
+    //     if ( e.data !== undefined ) {
+    //         console.log(e.data);
+    //         switch (e.data.type) {
+    //             case "tick": return ticked(e.data);
+    //             case "end": return ended(e.data);
+    //         }
+    //     }
+    // }, false );
 
 };
 
