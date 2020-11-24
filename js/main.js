@@ -56,7 +56,7 @@ let playCasesNow, thisCaseId, thisCaseOrder;
 
 // Switch the language to english/romanian
 let language = d3.select('#language').node().value;
-let dataPath = languale === 'en' ? '../data/cases_relations_simulated.json' : 'data/cases_relations_simulated.json';
+let dataPath = language === 'en' ? '../data/cases_relations_simulated.json' : 'data/cases_relations_simulated.json';
 
 (() => {
 
