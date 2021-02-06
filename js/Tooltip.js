@@ -165,8 +165,10 @@ export const toggleInfo = (infoStatus, language) => {
             .style('max-width', '100%')
             .style('opacity', .9);
         tooltip_div.html(Language.infoHtml(language))
-            .style('left', Config.width / 2 + 'px')
-            .style('top', Config.height / 2 + 'px')
+            .style('left', '50px')
+            .style('top', '50px')
+            .style('margin-left', auto)
+            .style('margin-right', auto)
             .style('display', null);
         infoStatus = false;
     } else {
